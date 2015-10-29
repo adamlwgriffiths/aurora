@@ -114,14 +114,18 @@ def scrape_mawson():
         save_image(img, mawson_directory + os.path.basename(img))
 
 
+def run():
+    scrape_aurora()
+    scrape_casey()
+    scrape_davis()
+    scrape_mawson()
+
+
 def scrape():
     while True:
-        scrape_aurora()
-        scrape_casey()
-        scrape_davis()
-        scrape_mawson()
+        run()
         time.sleep(60)
 
 
 if __name__ == '__main__':
-    scrape()
+    run()
