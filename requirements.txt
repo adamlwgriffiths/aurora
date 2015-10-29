@@ -1,0 +1,4 @@
+requests
+beautifulsoup4
+pillow
+git+https://github.com/chrsbats/kvstore.git
