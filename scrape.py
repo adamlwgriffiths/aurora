@@ -12,7 +12,7 @@ from PIL import ImageFile
 webcam_re = re.compile(r'/webcams/.*\.jpg', flags=re.I)
 
 s3_bucket = 'antarctica-scrape'
-if os.environ.get('SCRAPE_STORE') is 's3' and os.environ.get('AWS_ACCESS_KEY_ID', None):
+if os.environ.get('SCRAPE_STORE') == 's3' and os.environ.get('AWS_ACCESS_KEY_ID', None):
     store = kvstore.create('s3://'+s3_bucket)
 else:
     store = kvstore.create('file://' + os.path.join(os.path.dirname(__file__), 'kvstore'))
@@ -123,37 +123,42 @@ def historic_aurora(image):
                     t_new += datetime.timedelta(minutes=1)
 
         t_new = t - datetime.timedelta(minutes=30)
-        #if t_new.day != t.day:
-        #    image_day -= 1
         t = t_new
 
 
 def historic_base(base, path):
     year, month, day, image = path.split('/')
     base_code = image[0]
-    image_day = int(image[1:-4])
-    image_hour = int(image[-4:-2])
-    image_minute = int(image[-2:])
 
-    t_orig = t = datetime.datetime(int(year), int(month), int(day), image_hour, image_minute)
+    # C1511302355s
+    # base + year + month + day + hour + min + s
+    timestamp = image[1:]
+    year = int('20'+timestamp[0:2])
+    month = int(timestamp[2:4])
+    day = int(timestamp[4:6])
+    hour = int(timestamp[6:8])
+    minute = int(timestamp[8:])
+
+    t = datetime.datetime(year, month, day, hour, minute)
 
     min_t = datetime.datetime(2015, 10, 29)
     while t > min_t:
-        day_code = image_day - day_difference(t_orig, t)
-        image = 'http://images.antarctica.gov.au/webcams/{base}/{date}/{code}{number}{time}s.jpg'.format(
+        image = 'http://images.antarctica.gov.au/webcams/{base}/{year}/{month}/{day}/{base_code}{year_short}{month}{day}{hour}{minute}{camera}.jpg'.format(
             base=base,
-            date=t.strftime('%Y/%m/%d'),
-            code=base_code,
-            number=day_code,
-            time=t.strftime('%H%M'),
+            base_code=base_code,
+            year=t.strftime('%Y'),
+            year_short=t.strftime('%y'),
+            month=t.strftime('%m'),
+            day=t.strftime('%d'),
+            hour=t.strftime('%H'),
+            minute=t.strftime('%M'),
+            camera='s'
         )
         try:
             save_image(image, '{}/{}'.format(base, os.path.basename(image)))
         except:
             print('Failed to download image {}'.format(image))
         t_new = t - datetime.timedelta(minutes=5)
-        #if t_new.day != t.day:
-        #    image_day -= 1
         t = t_new
 
 
@@ -176,14 +181,14 @@ def historic():
     davis = '2015/12/02/D1512020735'
     mawson = '2015/12/02/M1512020730'
 
-    historic_aurora(aurora)
+    #historic_aurora(aurora)
     historic_base('casey', casey)
     historic_base('davis', davis)
     historic_base('mawson', mawson)
 
 
 if __name__ == '__main__':
-    if os.environ.get('SCRAPE_MODE') is 'historic':
+    if os.environ.get('SCRAPE_MODE') == 'historic':
         historic()
     else:
         run()
