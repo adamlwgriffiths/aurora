@@ -12,7 +12,7 @@ from PIL import ImageFile
 webcam_re = re.compile(r'/webcams/.*\.jpg', flags=re.I)
 
 s3_bucket = 'antarctica-scrape'
-if os.environ.get('STORE', 's3') is 's3' and os.environ.get('AWS_ACCESS_KEY_ID', None):
+if os.environ.get('SCRAPE_STORE') is 's3' and os.environ.get('AWS_ACCESS_KEY_ID', None):
     store = kvstore.create('s3://'+s3_bucket)
 else:
     store = kvstore.create('file://' + os.path.join(os.path.dirname(__file__), 'kvstore'))
@@ -157,25 +157,6 @@ def historic_base(base, path):
         t = t_new
 
 
-#Downloding http://images.antarctica.gov.au/webcams/aurora/15/A153360730C.jpg
-#Downloding http://images.antarctica.gov.au/webcams/aurora/15/A153360730A.jpg
-#Downloding http://images.antarctica.gov.au/webcams/aurora/15/A153360730B.jpg
-#Downloding http://images.antarctica.gov.au/webcams/casey/2015/12/02/C1512020730s.jpg
-#Downloding http://images.antarctica.gov.au/webcams/davis/2015/12/02/D1512020735s.jpg
-#Downloding http://images.antarctica.gov.au/webcams/mawson/2015/12/02/M1512020730s.jpg
-
-def historic_bases():
-    casey = '2015/12/02/C1512020730'
-    davis = '2015/12/02/D1512020735'
-    mawson = '2015/12/02/M1512020730'
-
-    #casey = '2015/12/02/C1512020005'
-
-    historic_base('casey', casey)
-    historic_base('davis', davis)
-    historic_base('mawson', mawson)
-
-
 def run():
     scrape_webcam('aurora')
     scrape_webcam('casey')
@@ -189,7 +170,20 @@ def scrape():
         time.sleep(60)
 
 
+def historic():
+    aurora = 'A153360730'
+    casey = '2015/12/02/C1512020730'
+    davis = '2015/12/02/D1512020735'
+    mawson = '2015/12/02/M1512020730'
+
+    historic_aurora(aurora)
+    historic_base('casey', casey)
+    historic_base('davis', davis)
+    historic_base('mawson', mawson)
+
+
 if __name__ == '__main__':
-    #run()
-    historic_aurora('A153360730')
-    historic_bases()
+    if os.environ.get('SCRAPE_MODE') is 'historic':
+        historic()
+    else:
+        run()
