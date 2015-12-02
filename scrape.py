@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 import kvstore
 import cStringIO
 from PIL import ImageFile
+from multiprocessing import Pool
+
 
 webcam_re = re.compile(r'/webcams/.*\.jpg', flags=re.I)
 
@@ -16,6 +18,15 @@ if os.environ.get('SCRAPE_STORE') == 's3' and os.environ.get('AWS_ACCESS_KEY_ID'
     store = kvstore.create('s3://'+s3_bucket)
 else:
     store = kvstore.create('file://' + os.path.join(os.path.dirname(__file__), 'kvstore'))
+
+_pool = None
+
+
+def pool():
+    global _pool
+    if not _pool:
+        _pool = Pool(5)
+    return _pool
 
 
 def serialise(im):
@@ -126,7 +137,7 @@ def historic_aurora(image):
         t = t_new
 
 
-def historic_base(base, path):
+def historic_base_urls(base, path):
     year, month, day, image = path.split('/')
     base_code = image[0]
 
@@ -154,12 +165,24 @@ def historic_base(base, path):
             minute=t.strftime('%M'),
             camera='s'
         )
-        try:
-            save_image(image, '{}/{}'.format(base, os.path.basename(image)))
-        except:
-            print('Failed to download image {}'.format(image))
+        key = '{}/{}'.format(base, os.path.basename(image))
+        yield image, key
+
         t_new = t - datetime.timedelta(minutes=5)
         t = t_new
+
+
+def save_image_star(args):
+    try:
+        save_image(*args)
+    except:
+        print('Failed to download image {}'.format(args[0]))
+
+
+def historic_base(base, path):
+    args = historic_base_urls(base, path)
+    args = filter(lambda (image, key): not store.exists(key), args)
+    pool().map(save_image_star, args)
 
 
 def run():
