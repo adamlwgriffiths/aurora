@@ -12,8 +12,10 @@ from PIL import ImageFile
 webcam_re = re.compile(r'/webcams/.*\.jpg', flags=re.I)
 
 s3_bucket = 'antarctica-scrape'
-store = kvstore.create('s3://'+s3_bucket)
-#store = kvstore.create('file://' + os.path.join(os.path.dirname(__file__), 'kvstore'))
+if os.environ.get('AWS_ACCESS_KEY_ID', None):
+    store = kvstore.create('s3://'+s3_bucket)
+else:
+    store = kvstore.create('file://' + os.path.join(os.path.dirname(__file__), 'kvstore'))
 
 
 def serialise(im):
