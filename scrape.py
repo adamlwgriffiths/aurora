@@ -12,7 +12,7 @@ from PIL import ImageFile
 webcam_re = re.compile(r'/webcams/.*\.jpg', flags=re.I)
 
 s3_bucket = 'antarctica-scrape'
-if os.environ.get('AWS_ACCESS_KEY_ID', None):
+if os.environ.get('STORE', 's3') is 's3' and os.environ.get('AWS_ACCESS_KEY_ID', None):
     store = kvstore.create('s3://'+s3_bucket)
 else:
     store = kvstore.create('file://' + os.path.join(os.path.dirname(__file__), 'kvstore'))
@@ -44,6 +44,12 @@ def save_image(url, key):
     print('Downloding {}'.format(url))
     im = download_image(url)
     store.put(key, im)
+
+
+def day_difference(d1, d2):
+    absd1 = datetime.datetime(year=d1.year, month=d1.month, day=d1.day)
+    absd2 = datetime.datetime(year=d2.year, month=d2.month, day=d2.day)
+    return (absd1 - absd2).days
 
 
 def scrape_webcam(camera):
@@ -86,7 +92,8 @@ def historic_aurora(image):
     image_hour = int(image[-4:-2])
     image_minute = int(image[-2:])
 
-    t_orig = t = datetime.datetime(2015, 11, 2, image_hour, image_minute)
+    now = datetime.datetime.now()
+    t_orig = t = datetime.datetime(now.year, now.month, now.day, image_hour, image_minute)
 
     # the first image i managed to capture
     cameras = ['A', 'B', 'C']
@@ -100,7 +107,7 @@ def historic_aurora(image):
             # so poke about +10 minutes
             for x in range(10):
                 try:
-                    day_code = image_day - (t_orig - t_new).days
+                    day_code = image_day - day_difference(t_orig, t_new)
 
                     image = 'http://images.antarctica.gov.au/webcams/{base}/15/{code}{number}{time}{camera}.jpg'.format(
                         base=base,
@@ -132,7 +139,7 @@ def historic_base(base, path):
 
     min_t = datetime.datetime(2015, 10, 29)
     while t > min_t:
-        day_code = image_day - (t_orig - t).days
+        day_code = image_day - day_difference(t_orig, t)
         image = 'http://images.antarctica.gov.au/webcams/{base}/{date}/{code}{number}{time}s.jpg'.format(
             base=base,
             date=t.strftime('%Y/%m/%d'),
@@ -150,10 +157,19 @@ def historic_base(base, path):
         t = t_new
 
 
+#Downloding http://images.antarctica.gov.au/webcams/aurora/15/A153360730C.jpg
+#Downloding http://images.antarctica.gov.au/webcams/aurora/15/A153360730A.jpg
+#Downloding http://images.antarctica.gov.au/webcams/aurora/15/A153360730B.jpg
+#Downloding http://images.antarctica.gov.au/webcams/casey/2015/12/02/C1512020730s.jpg
+#Downloding http://images.antarctica.gov.au/webcams/davis/2015/12/02/D1512020735s.jpg
+#Downloding http://images.antarctica.gov.au/webcams/mawson/2015/12/02/M1512020730s.jpg
+
 def historic_bases():
-    casey = '2015/11/02/C1511020120'
-    davis = '2015/11/02/D1511020120'
-    mawson = '2015/11/01/M1511012355'
+    casey = '2015/12/02/C1512020730'
+    davis = '2015/12/02/D1512020735'
+    mawson = '2015/12/02/M1512020730'
+
+    #casey = '2015/12/02/C1512020005'
 
     historic_base('casey', casey)
     historic_base('davis', davis)
@@ -174,6 +190,6 @@ def scrape():
 
 
 if __name__ == '__main__':
-    run()
-    #historic_aurora('A153020000')
-    #historic_bases()
+    #run()
+    historic_aurora('A153360730')
+    historic_bases()
